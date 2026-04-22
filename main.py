@@ -1,48 +1,59 @@
-
 import pdfplumber
-import json
+import re
 from sentence_transformers import SentenceTransformer, util
-model = SentenceTransformer('all-MiniLM-L6-v2')
-with pdfplumber.open("RIL-Integrated-Annual-Report-2024-25.pdf") as pdf:
-    first_page = pdf.pages[56]
-    table_data = first_page.extract_table()
 
-# Create the empty dictionary
+print("Loading AI Model...")
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+print("Extracting PDF...")
+with pdfplumber.open("RIL-Integrated-Annual-Report-2024-25.pdf") as pdf:
+    target_page = pdf.pages[56] 
+    raw_text = target_page.extract_text()
+
 vector_database = []
 
-# Loop through the data, skipping the first row (headers)
-for row in table_data[1:]:
-    key = row[0]
-    value = row[1]
-    search_text = f"{key}: {value}"
-    embedding = model.encode(search_text)
-    
-    # Store both the text and the math together!
-    row_data = {
-        "text": search_text,
-        "vector": embedding
-    }
-    vector_database.append(row_data)
-# Print the final dictionary
-print(len(vector_database))
+# Regex Pattern: 
+# 1. Finds words/spaces: ([A-Za-z\s\-\&]+?)
+# 2. Ignores optional 1-or-2 digit note numbers: (?:\d{1,2}\s+)?
+# 3. Grabs Indian-formatted numbers with commas: (\d{1,3}(?:,\d{2,3})+)
+pattern = re.compile(r'([A-Za-z\s\-\&]+?)\s+(?:\d{1,2}\s+)?(\d{1,3}(?:,\d{2,3})+)')
 
-user_query = "What is the total cash?"
+# Split text into lines and parse
+for line in raw_text.split('\n'):
+    matches = pattern.findall(line)
+    
+    # Because of the two-pane mash, there might be two matches per line!
+    for match in matches:
+        key = match[0].strip()
+        value = match[1].strip()
+        
+        # Filter out table headers and garbage
+        if len(key) > 3 and "As at" not in key and "Total" not in key:
+            search_text = f"{key} is {value} crore"
+            
+            vector_database.append({
+                "text": search_text,
+                "vector": model.encode(search_text)
+            })
+
+print(f"Successfully cleaned and vectorized {len(vector_database)} financial line items.\n")
+
+# --- THE AI SEARCH ENGINE ---
+user_query = "How much is the Equity Share capital?"
+print(f"User Question: '{user_query}'\n")
+
 query_vector = model.encode(user_query)
 
-# We will keep track of the highest score and the best text
 best_score = 0
 best_answer = ""
 
-# Loop through our database to find the match
 for item in vector_database:
-    # Compare the user's question to the current row's vector
-    # util.cos_sim returns a complex tensor, .item() converts it to a standard Python decimal
     similarity_score = util.cos_sim(query_vector, item["vector"]).item()
     
-    # If this score is the highest we've seen, save it!
     if similarity_score > best_score:
         best_score = similarity_score
         best_answer = item["text"]
 
+print("--- AI SEARCH RESULTS ---")
 print(f"Top Match: {best_answer}")
-print(f"Confidence Score: {best_score}")
+print(f"Confidence Score: {round(best_score * 100, 2)}%")
