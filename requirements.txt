@@ -1,0 +1,40 @@
+# DocuAgent dependencies.
+# Grouped by pipeline layer so you learn what each is for.
+# Install with:  pip install -r requirements.txt
+
+# ---- Layer 1: PDF ingestion & parsing ----
+pdfplumber==0.11.4          # table extraction from PDFs
+pymupdf==1.24.10            # fast text + layout extraction (imported as 'fitz')
+
+# ---- Layer 2: chunking ----
+tiktoken==0.8.0             # count tokens the way LLMs do
+
+# ---- Layer 3: embeddings + vector DB ----
+google-generativeai==0.8.3 # Gemini API: embeddings (text-embedding-004) + LLM
+qdrant-client==1.12.1      # vector database client
+sentence-transformers==3.3.1  # local embeddings + cross-encoder reranker
+
+# ---- Layer 4: keyword search ----
+rank-bm25==0.2.2           # BM25 keyword ranking for hybrid search
+
+# ---- Layer 6: RAG orchestration ----
+langchain==0.3.7
+langchain-google-genai==2.0.4
+
+# ---- Layer 7: evaluation ----
+ragas==0.2.6
+datasets==3.1.0
+
+# ---- Layer 8: observability ----
+langsmith==0.1.143
+
+# ---- Layer 9: API + serving ----
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+pydantic-settings==2.6.1   # typed settings loaded from .env
+
+# ---- utilities ----
+python-dotenv==1.0.1       # load .env into environment
+pandas==2.2.3              # structured numeric layer (Day 7)
+tqdm==4.67.0               # progress bars for long ingestion runs

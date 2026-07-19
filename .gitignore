@@ -1,0 +1,31 @@
+# ---- Secrets: NEVER commit real keys ----
+.env
+*.key
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.mypy_cache/
+.pytest_cache/
+*.egg-info/
+
+# ---- Data: large binaries + generated outputs stay local ----
+# Raw PDFs are big; we document where to download them instead of committing.
+data/raw_pdfs/*.pdf
+# Parsed/generated artifacts are reproducible from the pipeline.
+data/parsed_json/*.json
+data/chunks/*.json
+
+# ---- Vector DB local storage ----
+qdrant_storage/
+
+# ---- OS / editor cruft ----
+.DS_Store
+.vscode/
+.idea/
+
+# ---- Legacy prototype (kept for history, not part of the package) ----
+# main.py  # uncomment if you later remove it
