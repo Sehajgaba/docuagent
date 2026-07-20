@@ -31,7 +31,7 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 2 | Embeddings (text → vector) | D1 | 🟡 | — | 768-dim Gemini |
 | 3 | Cosine similarity | D1 | 🟡 | — | range −1..1; bug in old main.py |
 | 4 | PDF parsing (pymupdf vs pdfplumber) | D1 | 🟡 | — | text vs tables |
-| 5 | Financial number normalization | D1 | 🟡 | — | (x)=neg, Indian grouping |
+| 5 | Financial number normalization | D1 | 🟢 | ✓ | got why; missed 1,47,087→147087 |
 | 6 | Registry / metadata pattern | D1 | 🟡 | — | single source of truth |
 | 7 | Structure-aware chunking | D2 | 🔴 | — | |
 | 8 | Vector DB + HNSW (ANN) | D3 | 🔴 | — | O(log n) vs brute force |
@@ -49,7 +49,7 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 20 | FastAPI serving | D11 | 🔴 | — | |
 | 21 | Docker + deployment | D12 | 🔴 | — | |
 
-**Score:** 6/21 seen · 0/21 explain-cold · 0/21 deep
+**Score:** 6/21 seen · 1/21 explain-cold · 0/21 deep
 
 ---
 
@@ -59,8 +59,8 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 **Built:** project scaffold, `pdf_parser.py` (PDF → structured JSON), `normalize_number`, document registry, run script. Pushed `03b313b`.
 **Learned:** why two PDF libs; accounting negatives `(x)`; Indian digit grouping; registry pattern; repo hygiene (no secrets/binaries in git); Windows cp1252 `₹` crash fix.
 **Bugs seen:** old `main.py` `best_score=0` (cosine can be negative); `--max` slicing after full parse.
-**Quiz:** not taken yet.
-**Weak / revisit:** —
+**Quiz:** 1/6 cold → concept 5 (number-norm) 🟢. Q1 partial (missed pymupdf=text vs pdfplumber=tables split). Q3/Q4/Q5 punted → taught, re-quiz next round.
+**Weak / revisit:** cosine range+bug (Q3), embedding def+dims (Q4), registry pattern (Q5), Indian digit grouping value.
 
 <!-- TEMPLATE for next entries:
 ### Day N — YYYY-MM-DD · Layer N: <name>
