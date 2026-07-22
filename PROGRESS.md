@@ -60,7 +60,11 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 **Learned:** why two PDF libs; accounting negatives `(x)`; Indian digit grouping; registry pattern; repo hygiene (no secrets/binaries in git); Windows cp1252 `₹` crash fix.
 **Bugs seen:** old `main.py` `best_score=0` (cosine can be negative); `--max` slicing after full parse.
 **Quiz:** 1/6 cold → concept 5 (number-norm) 🟢. Q1 partial (missed pymupdf=text vs pdfplumber=tables split). Q3/Q4/Q5 punted → taught, re-quiz next round.
-**Weak / revisit:** cosine range+bug (Q3), embedding def+dims (Q4), registry pattern (Q5), Indian digit grouping value.
+**Re-quiz round 2 (Q3/Q4/Q5):** all 3 partial, none flipped 🟢 yet — right instinct, missing precision:
+  - Q3 cosine: got range(-1..1)+meaning of endpoints; said "angle between nodes" (should be *vectors*); missed practical 0..1 range for real embeddings + why that's the nuance behind the `best_score=0` bug.
+  - Q4 embeddings: got text/photo→vector via a model; missed what "768-dim" means (learned meaning-features, not human-labeled); said "define" (should be "convert/learn," model isn't hand-rule-based).
+  - Q5 registry: core idea solid (one place, no per-layer repeats); said "routing" (wrong term — it's metadata storage); didn't name the principle: **single source of truth**.
+**Weak / revisit:** vector vs node terminology; embedding dimensionality meaning; naming "single source of truth" explicitly.
 
 <!-- TEMPLATE for next entries:
 ### Day N — YYYY-MM-DD · Layer N: <name>
