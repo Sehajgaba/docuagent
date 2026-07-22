@@ -27,13 +27,13 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 
 | # | Concept | Layer/Day | Status | Quiz | Notes |
 |---|---|---|---|---|---|
-| 1 | Tokens & token counting | D1–D2 | 🟡 | — | tiktoken on D2 |
+| 1 | Tokens & token counting | D1–D2 | 🟡 | — | tiktoken cl100k_base as proxy ruler |
 | 2 | Embeddings (text → vector) | D1 | 🟡 | — | 768-dim Gemini |
-| 3 | Cosine similarity | D1 | 🟡 | — | range −1..1; bug in old main.py |
+| 3 | Cosine similarity | D1 | 🟡 | — | range −1..1; practical ~0..1; missed unrelated≈0 in re-quiz |
 | 4 | PDF parsing (pymupdf vs pdfplumber) | D1 | 🟡 | — | text vs tables |
 | 5 | Financial number normalization | D1 | 🟢 | ✓ | got why; missed 1,47,087→147087 |
-| 6 | Registry / metadata pattern | D1 | 🟡 | — | single source of truth |
-| 7 | Structure-aware chunking | D2 | 🔴 | — | |
+| 6 | Registry / metadata pattern | D1 | 🟡 | — | single source of truth; missed naming it |
+| 7 | Structure-aware chunking | D2 | 🟡 | — | table=1 chunk; paragraph-atomic grouping |
 | 8 | Vector DB + HNSW (ANN) | D3 | 🔴 | — | O(log n) vs brute force |
 | 9 | BM25 keyword search | D4 | 🔴 | — | |
 | 10 | Hybrid search + RRF fusion | D4 | 🔴 | — | why rank not raw score |
@@ -49,7 +49,7 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 20 | FastAPI serving | D11 | 🔴 | — | |
 | 21 | Docker + deployment | D12 | 🔴 | — | |
 
-**Score:** 6/21 seen · 1/21 explain-cold · 0/21 deep
+**Score:** 7/21 seen · 1/21 explain-cold · 0/21 deep
 
 ---
 
@@ -65,6 +65,13 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
   - Q4 embeddings: got text/photo→vector via a model; missed what "768-dim" means (learned meaning-features, not human-labeled); said "define" (should be "convert/learn," model isn't hand-rule-based).
   - Q5 registry: core idea solid (one place, no per-layer repeats); said "routing" (wrong term — it's metadata storage); didn't name the principle: **single source of truth**.
 **Weak / revisit:** vector vs node terminology; embedding dimensionality meaning; naming "single source of truth" explicitly.
+
+### Day 2 — 2026-07-19 · Layer 2: Chunking ✅
+**Built:** `chunker.py` — tables kept whole (1 table = 1 chunk, never split); narrative split by paragraph, greedily grouped under 512-token cap, paragraph itself never split mid-sentence. Section-type heuristic (keyword match) gated on `has_tables` for balance_sheet/P&L/cash_flow. Committed `4d6e48d`.
+**Learned:** why naive fixed-token chunking breaks tables; paragraph-as-atomic-unit tradeoff (oversized chunk > broken sentence); tiktoken as a cross-model token-counting proxy.
+**Bug found + fixed live:** heuristic false-positived "our strong balance sheet" (prose in Chairman's letter, page 4) as the `balance_sheet` section — no actual table on that page. Fix: table-type sections now require `page['tables']` non-empty before the keyword counts. Real lesson in why naive keyword rules need a structural guard.
+**Quiz:** not yet run for Day 2 concepts.
+**Weak / revisit:** cosine unrelated≈0 (missed again in re-quiz), naming "single source of truth" explicitly.
 
 <!-- TEMPLATE for next entries:
 ### Day N — YYYY-MM-DD · Layer N: <name>
