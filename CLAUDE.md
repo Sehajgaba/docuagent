@@ -6,12 +6,13 @@ Agentic RAG over BSE annual reports. Learning + showcase project.
 **Beginner** in AI/ML concepts (backend eng, ~10mo, comfortable Python/FastAPI, new to embeddings/RAG/agents/DSA/system-design). Explain concepts from scratch — no assumed ML background. Use concrete examples/numbers over abstract math. Define jargon on first use every topic (don't assume prior terms stuck).
 
 ## Rules (do not break)
-1. **NEVER `git push`.** Commit only if asked. User pushes manually.
-2. **Update PROGRESS.md after every phase/day** — mastery map + daily log entry.
-3. **Deep-teach**: explain key concepts + interview-relevant detail after each build chunk. User learning, not just shipping.
-4. **Cadence**: one layer/day. Quiz user after each layer; concept goes 🟢 only after passing quiz.
-5. **Be terse** (save tokens). Fragments ok. Code/commits normal prose.
-6. **For every tool/library/technique used: state why chosen + name the alternative(s) + tradeoff.** Not just "what it does" — "why this over X."
+1. **NEVER `git commit` or `git push` on your own.** Only commit when explicitly asked *in that turn* — finishing a build step is not implicit permission. User commits/pushes manually otherwise.
+2. **No "Day N" / "Layer N" labels in commit messages.** Describe what changed, not the schedule slot.
+3. **Update PROGRESS.md after every phase/day** — mastery map + daily log entry.
+4. **Deep-teach**: explain key concepts + interview-relevant detail after each build chunk. User learning, not just shipping.
+5. **Cadence**: one layer/day. Quiz user after each layer; concept goes 🟢 only after passing quiz.
+6. **Be terse** (save tokens). Fragments ok. Code/commits normal prose.
+7. **For every tool/library/technique used: state why chosen + name the alternative(s) + tradeoff.** Not just "what it does" — "why this over X."
 
 ## Stack (free tier)
 - LLM+embed: Gemini (`gemini-2.0-flash`, `text-embedding-004` 768d)
