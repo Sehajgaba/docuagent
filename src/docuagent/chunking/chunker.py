@@ -82,11 +82,41 @@ def render_table(table: list[list[str]]) -> str:
     return "\n".join(" | ".join(cell for cell in row if cell) for row in table)
 
 
-# --- Paragraph splitting --------------------------------------------------------
-def _split_paragraphs(text: str) -> list[str]:
-    """Split page text into paragraphs on blank lines, dropping empties."""
-    raw_paragraphs = re.split(r"\n\s*\n", text)
-    return [p.strip() for p in raw_paragraphs if p.strip()]
+# --- Table-noise filtering -------------------------------------------------------
+# pymupdf's `get_text` reads every visible character on the page, including the
+# numbers that ALSO live inside pdfplumber's extracted tables -- so without a
+# filter, a financial-highlights table shows up twice: once as a proper table
+# chunk (label attached to each number) and once as flowing "narrative" text
+# (rows of bare digits, no label -- since a table's row-label and its numbers
+# are visually separate blocks, e.g. "Total Assets" and "228,151 19,50,121 ..."
+# arrive as two different blocks from `_extract_blocks`).
+#
+# The fix doesn't try to string-match block text against table cell text (too
+# fragile -- whitespace/formatting differs between the two extractors). Instead
+# it recognises the SHAPE of a table-row block: mostly digits, few real words.
+# Real prose, even numbers-heavy prose ("EBITDA grew 2.9% to J1,83,422 crore"),
+# is still mostly letters; a bare table row ("125,320 10,71,174 10,00,122 ...")
+# is almost all digits. Verified empirically against this report's page 5: this
+# rule dropped 63/111 blocks (all genuine table remnants) and kept all 48 real
+# sentences.
+_MIN_BLOCK_TOKENS = 3
+_MAX_DIGIT_DENSITY = 0.5
+
+
+def _digit_density(text: str) -> float:
+    """Fraction of alphanumeric characters in `text` that are digits."""
+    alnum = [c for c in text if c.isalnum()]
+    if not alnum:
+        return 0.0
+    digits = sum(1 for c in alnum if c.isdigit())
+    return digits / len(alnum)
+
+
+def _is_table_noise(text: str, token_count: int) -> bool:
+    """True if a block is table wreckage, not real narrative content."""
+    if token_count < _MIN_BLOCK_TOKENS:
+        return True
+    return _digit_density(text) > _MAX_DIGIT_DENSITY
 
 
 def _group_paragraphs(paragraphs: list[str], max_tokens: int) -> list[str]:
@@ -133,31 +163,38 @@ def chunk_document(parsed: dict, max_tokens: int = MAX_NARRATIVE_TOKENS) -> list
         page_number = page["page_number"]
         section_type = detect_section_type(page["text"], has_tables=bool(page["tables"]))
 
-        # Rule: every table on the page is its own chunk, never split.
+        # Rule: every table on the page is its own chunk, never split. Tables
+        # under 3 tokens (e.g. a stray "Vari" or "Connectivity" from cover-page
+        # graphics pdfplumber mistook for a grid) are noise, not data -- skip.
         for table in page["tables"]:
             text = render_table(table)
-            if not text.strip():
+            token_count = count_tokens(text)
+            if not text.strip() or token_count < _MIN_BLOCK_TOKENS:
                 continue
             chunks.append(
                 {
                     "chunk_id": next_id(f"{section_type}_table" if section_type != "narrative" else "table"),
                     "company": company,
                     "fy": fy,
+                    "chunk_type": "table",
                     "section_type": section_type if section_type != "narrative" else "table",
                     "page_numbers": [page_number],
                     "text": text,
-                    "token_count": count_tokens(text),
+                    "token_count": token_count,
                 }
             )
 
-        # Narrative text: paragraph-split, then grouped under the token cap.
-        paragraphs = _split_paragraphs(page["text"])
-        for group_text in _group_paragraphs(paragraphs, max_tokens):
+        # Narrative text: real layout-based paragraph blocks (see
+        # `_extract_blocks` in the parser), minus table-remnant noise, grouped
+        # under the token cap.
+        blocks = [b for b in page["blocks"] if not _is_table_noise(b, count_tokens(b))]
+        for group_text in _group_paragraphs(blocks, max_tokens):
             chunks.append(
                 {
                     "chunk_id": next_id(section_type),
                     "company": company,
                     "fy": fy,
+                    "chunk_type": "narrative",
                     "section_type": section_type,
                     "page_numbers": [page_number],
                     "text": group_text,

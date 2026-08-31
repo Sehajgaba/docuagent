@@ -78,6 +78,32 @@ def _extract_tables(page: "pdfplumber.page.Page") -> list[list[list[str]]]:
     return tables
 
 
+def _extract_blocks(page: "fitz.Page") -> list[str]:
+    """Return the page's real paragraph units, using PDF layout not punctuation.
+
+    `get_text("text")` returns one long string with blank lines between
+    paragraphs -- except most PDFs (this report included) don't actually emit
+    a blank line at every paragraph break, so splitting on `\\n\\s*\\n` later
+    collapses a whole page into one "paragraph". `get_text("blocks")` instead
+    reads pymupdf's own layout analysis: each block is a spatially-separated
+    region (a gap in the page's x/y coordinates), which is what a paragraph,
+    heading, or table cell-cluster actually looks like on the page -- so this
+    is the same signal a human's eye uses to see where one paragraph ends and
+    the next begins, just read from the PDF's geometry instead of guessed from
+    text characters.
+    """
+    raw_blocks = page.get_text("blocks")
+    blocks: list[str] = []
+    for block in raw_blocks:
+        block_type = block[6]
+        if block_type != 0:  # 0 = text; 1 = image -- skip non-text blocks
+            continue
+        text = re.sub(r"\s+", " ", block[4]).strip()
+        if text:
+            blocks.append(text)
+    return blocks
+
+
 def parse_pdf(doc: Document, max_pages: int | None = None) -> dict:
     """Parse one registered Document into the structured dict we persist as JSON.
 
@@ -101,11 +127,13 @@ def parse_pdf(doc: Document, max_pages: int | None = None) -> dict:
     try:
         for i in tqdm(range(n), desc=f"Parsing {doc.doc_id}", unit="pg"):
             text = fitz_doc[i].get_text("text")          # layout-aware plain text
+            blocks = _extract_blocks(fitz_doc[i])         # layout-separated paragraph units
             tables = _extract_tables(plumber_pdf.pages[i])  # cell grids
             pages.append(
                 {
                     "page_number": i + 1,   # 1-indexed for humans
                     "text": text,
+                    "blocks": blocks,
                     "tables": tables,
                 }
             )

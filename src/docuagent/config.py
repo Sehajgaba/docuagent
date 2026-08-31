@@ -40,23 +40,31 @@ class Settings(BaseSettings):
         extra="ignore",  # ignore env vars we don't declare here
     )
 
-    # --- NVIDIA NIM ----------------------------------------------------------
-    # NVIDIA serves both embedding and chat models behind ONE OpenAI-compatible
-    # endpoint, so we use the `openai` SDK pointed at their base_url rather than
-    # a vendor-specific client. One key, one SDK, two model families.
-    nvidia_api_key: str = ""
-    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
-
-    # Embedding model (Layer 3). `embedqa` variants are trained specifically for
-    # retrieval — they place a QUESTION near its ANSWER in vector space, which is
-    # exactly what RAG needs. 8192-token context, so our oversized chunks survive.
-    embedding_model: str = "nvidia/llama-3.2-nv-embedqa-1b-v1"
-    # Verified empirically by scripts/check_embedding.py, not assumed. The Qdrant
-    # collection is created with this size and CANNOT be changed without re-indexing.
-    embedding_dim: int = 2048
+    # --- Gemini (embeddings, Layer 3) -----------------------------------------
+    # AI Studio key works immediately, no per-model entitlement gate (unlike
+    # NVIDIA below, where a valid key can still 404 on an unapproved model).
+    gemini_api_key: str = ""
+    # gemini-embedding-2: 8192-token input (text-embedding-004, the originally
+    # planned model, was retired and capped at 2048 anyway — too small for our
+    # oversized Day-2 chunks). Places a QUESTION near its ANSWER in vector
+    # space, which is exactly what RAG needs.
+    embedding_model: str = "models/gemini-embedding-2"
+    # Requested via Matryoshka truncation (output_dimensionality) rather than
+    # the model's native 3072 — trained so a smaller slice of the vector stays
+    # meaningful, not just chopped. Smaller vectors = less Qdrant storage/RAM
+    # per chunk, cheaper at scale, small quality cost.
+    # Verified empirically by Embedder.dim (probes the live API), not assumed.
+    # The Qdrant collection is created with this size and CANNOT be changed
+    # without re-indexing everything.
+    embedding_dim: int = 768
     embedding_batch_size: int = 16  # texts per API call
 
-    # Chat model (Layers 6+): answer generation and agent reasoning.
+    # --- NVIDIA NIM (chat/generation, Layers 6+) ------------------------------
+    # OpenAI-compatible endpoint serving DeepSeek for answer generation + agent
+    # reasoning later. Kept separate from embeddings since NVIDIA's embedding
+    # models are not enabled on this account (see embedder.py docstring).
+    nvidia_api_key: str = ""
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
     llm_model: str = "deepseek-ai/deepseek-v4-pro-0813"
 
     # --- Qdrant --------------------------------------------------------------
@@ -65,7 +73,6 @@ class Settings(BaseSettings):
     collection_name: str = "docuagent_chunks"
 
     # --- Optional / later layers --------------------------------------------
-    gemini_api_key: str = ""  # kept as a fallback provider, unused by default
     langsmith_api_key: str = ""
     langsmith_project: str = "docuagent"
 
