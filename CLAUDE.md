@@ -15,19 +15,26 @@ Agentic RAG over BSE annual reports. Learning + showcase project.
 7. **For every tool/library/technique used: state why chosen + name the alternative(s) + tradeoff.** Not just "what it does" — "why this over X."
 
 ## Stack (free tier)
-- LLM+embed: Gemini (`gemini-2.0-flash`, `text-embedding-004` 768d)
+- Embed: Gemini `gemini-embedding-2` (768d, Matryoshka-truncated from native 3072). `text-embedding-004` retired — do not reintroduce.
+- LLM: NVIDIA NIM `deepseek-ai/deepseek-v4-pro-0813` (OpenAI-compatible endpoint). Slow (~224s/reply observed) — needs a timeout/fallback plan before Day 6 wires it into RAG generation.
 - Vector DB: Qdrant (local Docker dev / Cloud free live)
 - Rerank: local cross-encoder `ms-marco-MiniLM` (no key)
 - Deploy: Render
 - Py 3.13, Windows/PowerShell. Secrets in `.env` (gitignored). PDFs gitignored.
+- NVIDIA NIM keys are entitlement-gated per model — a valid key can still 404 on a model not individually enabled for the account. Don't assume `/v1/models` listing a model means it's usable.
 
 ## Layout
-`src/docuagent/` (config.py=settings+DOCUMENTS registry, ingestion/pdf_parser.py)
-`scripts/run_ingestion.py` · `data/{raw_pdfs,parsed_json,chunks}/` (gitignored)
+`src/docuagent/` — `config.py` (settings+DOCUMENTS registry), `ingestion/pdf_parser.py`, `chunking/chunker.py`, `embedding/embedder.py`, `vectorstore/qdrant_store.py`
+`scripts/` — `run_ingestion.py`, `run_chunking.py`, `run_embedding.py`
+`data/{raw_pdfs,parsed_json,chunks,qdrant_storage}/` (gitignored)
 
 ## Commands
 - Ingest: `python scripts/run_ingestion.py --max 8` (dev) / no flag (full)
+- Chunk: `python scripts/run_chunking.py`
+- Embed + index: `python scripts/run_embedding.py --recreate`
+- Search test: `python scripts/run_embedding.py --search "question here"`
+- Qdrant: `docker run -d --name qdrant -p 6333:6333 -p 6334:6334 -v ./data/qdrant_storage:/qdrant/storage qdrant/qdrant` · dashboard at localhost:6333/dashboard
 - Windows: scripts force UTF-8 stdout (cp1252 crashes on `₹`)
 
 ## Build progress
-See PROGRESS.md. Day 1 (ingestion) done. Plan: 2 chunk·3 embed+Qdrant·4 hybrid·5 rerank·6 RAG·7 numeric·8 agent·9 RAGAS·10 langsmith·11 API+UI·12 deploy.
+See PROGRESS.md. Day 1 (ingestion), Day 2 (chunking), Day 3 (embed+Qdrant) done — Day 2/3 quizzes still owed. Plan: 4 hybrid·5 rerank·6 RAG·7 numeric·8 agent·9 RAGAS·10 langsmith·11 API+UI·12 deploy.
