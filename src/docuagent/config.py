@@ -1,8 +1,9 @@
 """Central configuration + the document registry.
 
-Two things live here:
-1. `Settings` — typed access to secrets/paths, loaded from `.env`.
-2. `DOCUMENTS`  — the list of source PDFs and their metadata (company, fiscal year).
+Three things live here:
+1. `Settings`  — typed access to secrets/paths/model names, loaded from `.env`.
+2. `DOCUMENTS` — the list of source PDFs and their metadata (company, fiscal year).
+3. Path constants for every stage of the pipeline.
 
 Why a registry? A PDF file on disk has no idea it is "Reliance, FY2024". We attach
 that knowledge once, here, and every downstream layer (chunking, embedding, search,
@@ -23,6 +24,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 RAW_PDF_DIR = DATA_DIR / "raw_pdfs"
 PARSED_JSON_DIR = DATA_DIR / "parsed_json"
 CHUNK_DIR = DATA_DIR / "chunks"
+QDRANT_STORAGE_DIR = DATA_DIR / "qdrant_storage"  # bind-mounted into the container
 
 
 class Settings(BaseSettings):
@@ -38,17 +40,34 @@ class Settings(BaseSettings):
         extra="ignore",  # ignore env vars we don't declare here
     )
 
-    gemini_api_key: str = ""
+    # --- NVIDIA NIM ----------------------------------------------------------
+    # NVIDIA serves both embedding and chat models behind ONE OpenAI-compatible
+    # endpoint, so we use the `openai` SDK pointed at their base_url rather than
+    # a vendor-specific client. One key, one SDK, two model families.
     nvidia_api_key: str = ""
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+
+    # Embedding model (Layer 3). `embedqa` variants are trained specifically for
+    # retrieval — they place a QUESTION near its ANSWER in vector space, which is
+    # exactly what RAG needs. 8192-token context, so our oversized chunks survive.
+    embedding_model: str = "nvidia/llama-3.2-nv-embedqa-1b-v1"
+    # Verified empirically by scripts/check_embedding.py, not assumed. The Qdrant
+    # collection is created with this size and CANNOT be changed without re-indexing.
+    embedding_dim: int = 2048
+    embedding_batch_size: int = 16  # texts per API call
+
+    # Chat model (Layers 6+): answer generation and agent reasoning.
+    llm_model: str = "deepseek-ai/deepseek-v4-pro-0813"
+
+    # --- Qdrant --------------------------------------------------------------
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str = ""
+    collection_name: str = "docuagent_chunks"
+
+    # --- Optional / later layers --------------------------------------------
+    gemini_api_key: str = ""  # kept as a fallback provider, unused by default
     langsmith_api_key: str = ""
     langsmith_project: str = "docuagent"
-
-    # model choices kept here so we change them in one place
-    embedding_model: str = "models/text-embedding-004"  # Gemini, 768-dim
-    llm_model: str = "gemini-2.0-flash"
-    collection_name: str = "docuagent_chunks"
 
 
 settings = Settings()  # import this everywhere: `from docuagent.config import settings`
@@ -76,9 +95,7 @@ DOCUMENTS: list[Document] = [
         company="Reliance Industries",
         fy="2024",
     ),
-    # Day-1+: download and register these (see README):
+    # Add more once the pipeline is proven on one doc:
     # Document("tcs_ar_2024.pdf",        "TCS",           "2024"),
     # Document("infosys_ar_2024.pdf",    "Infosys",       "2024"),
-    # Document("hdfcbank_ar_2024.pdf",   "HDFC Bank",     "2024"),
-    # Document("bajajfin_ar_2024.pdf",   "Bajaj Finance", "2024"),
 ]

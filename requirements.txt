@@ -10,9 +10,10 @@ pymupdf==1.24.10            # fast text + layout extraction (imported as 'fitz')
 tiktoken==0.8.0             # count tokens the way LLMs do
 
 # ---- Layer 3: embeddings + vector DB ----
-google-generativeai==0.8.3 # Gemini API: embeddings (text-embedding-004) + LLM
-qdrant-client==1.12.1      # vector database client
-sentence-transformers==3.3.1  # local embeddings + cross-encoder reranker
+openai==3.6.0               # OpenAI-compatible SDK, pointed at NVIDIA NIM (embeddings + chat)
+qdrant-client==1.19.0       # vector database client
+tenacity==9.1.2             # retry-with-backoff for flaky network calls
+sentence-transformers==3.3.1  # Day 5: local cross-encoder reranker
 
 # ---- Layer 4: keyword search ----
 rank-bm25==0.2.2           # BM25 keyword ranking for hybrid search
