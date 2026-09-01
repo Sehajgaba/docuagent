@@ -221,3 +221,14 @@ def chunk_and_save(doc: Document, max_tokens: int = MAX_NARRATIVE_TOKENS) -> Pat
     out_path = CHUNK_DIR / f"{doc.doc_id}.json"
     out_path.write_text(json.dumps(chunks, ensure_ascii=False, indent=2), encoding="utf-8")
     return out_path
+
+
+def load_chunks(doc_id: str) -> list[dict]:
+    """Read back data/chunks/<doc_id>.json. Shared by every downstream layer
+    (embedding, BM25 indexing, ...) so there is one place that knows the path."""
+    path = CHUNK_DIR / f"{doc_id}.json"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"No chunks at {path}. Run chunking first: python scripts/run_chunking.py"
+        )
+    return json.loads(path.read_text(encoding="utf-8"))

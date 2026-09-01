@@ -35,8 +35,8 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 6 | Registry / metadata pattern | D1 | 🟡 | — | single source of truth; missed naming it |
 | 7 | Structure-aware chunking | D2–D3 | 🟡 | — | table=1 chunk; paragraph-atomic grouping; D3: switched to layout-block splitting + digit-density noise filter |
 | 8 | Vector DB + HNSW (ANN) | D3 | 🟡 | — | O(log n) vs brute force; cosine vs euclidean; Qdrant built + tested live |
-| 9 | BM25 keyword search | D4 | 🔴 | — | |
-| 10 | Hybrid search + RRF fusion | D4 | 🔴 | — | why rank not raw score |
+| 9 | BM25 keyword search | D4 | 🟡 | — | TF (saturating) + IDF (auto-downweights common words) + length norm; no stopword list needed |
+| 10 | Hybrid search + RRF fusion | D4 | 🟡 | — | why rank not raw score (BM25 unbounded vs cosine 0..1); k=60 softens rank-1-vs-2 swing |
 | 11 | Reranking / cross-encoder | D5 | 🔴 | — | bi- vs cross-encoder |
 | 12 | RAG generation + grounding | D6 | 🔴 | — | anti-hallucination |
 | 13 | Prompt engineering | D6 | 🔴 | — | |
@@ -49,7 +49,7 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 20 | FastAPI serving | D11 | 🔴 | — | |
 | 21 | Docker + deployment | D12 | 🔴 | — | |
 
-**Score:** 8/21 seen · 1/21 explain-cold · 0/21 deep
+**Score:** 10/21 seen · 1/21 explain-cold · 0/21 deep
 
 ---
 
@@ -91,6 +91,15 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 **Chunks:** 16 → 25 after fix (8-page dev slice), avg 336 tokens (was 696), max 545 (was 2952), 20 narrative / 5 table.
 **Quiz:** skipped by request — concepts 7/8 stay 🟡, owed before Day 4 quiz backlog grows further.
 **Weak / revisit:** Day 2 quiz still outstanding on top of Day 3's.
+
+### Day 4 — 2026-09-01 · Layer 4: Hybrid search (BM25 + RRF) ✅
+**Built:** `retrieval/bm25_index.py` (`rank-bm25` `BM25Okapi`, simple lowercase-alnum tokenizer, no stopword list — IDF handles that automatically), `retrieval/hybrid.py` (`reciprocal_rank_fusion`, `HybridSearcher` — runs vector + BM25 in parallel, fuses by rank not raw score), `run_hybrid_search.py` (prints vector-only/BM25-only/hybrid side by side for one query). Small refactor: `load_chunks` moved out of `run_embedding.py` into `chunker.py` (was duplicated, now shared by both scripts). Not committed yet.
+**Learned:** BM25 = term frequency (saturating, not linear — 10th mention of a word barely counts more than the 5th) × inverse document frequency (rare terms weighted up, common terms down, automatic — no hand-built stopword list) × length normalization (a short chunk matching once is a stronger signal than a long one matching once). Why RRF not raw-score averaging: BM25 is unbounded (can be 3, can be 30), cosine is ~0..1 — summing them directly lets whichever system's numbers are bigger silently dominate. RRF fuses by RANK POSITION instead (same scale regardless of source), `1/(k+rank)`, `k=60` softens the #1-vs-#2 swing since neither ranker's top slot is reliably "twice as good" as its second.
+**Real finding, not textbook:** ran "EBITDA margin" — BM25 ranked a chunk with 2 "margin" + 2 "ebitda" mentions ABOVE one with 1 "margin" + 6 "ebitda" mentions. Looked like a bug, verified via `bm25.idf` directly: "margin" appears in only 4/25 chunks (idf 1.56) vs "ebitda" in 8/25 (idf 0.72) — correct BM25 behavior, just exposed by a tiny single-document corpus where per-term document-frequency stats are noisy. Will settle down once more companies join the DOCUMENTS registry.
+**Real finding, hybrid winning clearly:** ran "how has the company's phone and internet business grown" (deliberate paraphrase, no exact term overlap with the right answer). BM25-only top result was the Chairman's shareholder letter (matched on generic words like "company"/"grown") — completely wrong. Vector-only got it right (Jio content, top 3). Hybrid's RRF fusion pulled both real Jio chunks to #1/#2 — proof hybrid recovers from a single ranker's blind spot, not just a claim.
+**Known residual noise:** hybrid top-5 still let a table-of-contents chunk in at #4 (it scored well on BOTH BM25 — keyword-dense TOC — and sat somewhere in vector's wider candidate pool). Expected — that's precision cleanup, Day 5's cross-encoder reranker's job, not this layer's.
+**Quiz:** not yet run.
+**Weak / revisit:** Day 2 + Day 3 quizzes still outstanding, now 3 days deep in backlog.
 
 <!-- TEMPLATE for next entries:
 ### Day N — YYYY-MM-DD · Layer N: <name>

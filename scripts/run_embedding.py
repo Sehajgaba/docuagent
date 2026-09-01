@@ -6,13 +6,12 @@ Usage:
     python scripts/run_embedding.py --search "what was Jio's revenue growth?"
 
 Requires chunking to have run first (data/chunks/<doc_id>.json must exist) and
-NVIDIA_API_KEY set in .env.
+GEMINI_API_KEY set in .env.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -22,18 +21,10 @@ sys.stdout.reconfigure(encoding="utf-8")
 # make `src/` importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from docuagent.config import CHUNK_DIR, DOCUMENTS  # noqa: E402
+from docuagent.chunking.chunker import load_chunks  # noqa: E402
+from docuagent.config import DOCUMENTS  # noqa: E402
 from docuagent.embedding.embedder import Embedder  # noqa: E402
 from docuagent.vectorstore.qdrant_store import QdrantStore  # noqa: E402
-
-
-def load_chunks(doc_id: str) -> list[dict]:
-    path = CHUNK_DIR / f"{doc_id}.json"
-    if not path.exists():
-        raise FileNotFoundError(
-            f"No chunks at {path}. Run chunking first: python scripts/run_chunking.py"
-        )
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def run_index(recreate: bool) -> None:
