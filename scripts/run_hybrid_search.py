@@ -1,14 +1,15 @@
-"""Run Layer 4: hybrid search (vector + BM25 fused via RRF).
+"""Run Layers 4+5: hybrid search (vector + BM25 fused via RRF), then reranked.
 
 Usage:
     python scripts/run_hybrid_search.py --search "What was the EBITDA margin?"
     python scripts/run_hybrid_search.py --search "how did Jio's subscribers change?" --limit 5
 
-Prints vector-only, BM25-only, and hybrid results side by side for the same
-query -- the point is to SEE why hybrid beats either alone, not just claim it.
+Prints vector-only, BM25-only, hybrid, and hybrid+reranked results side by side
+for the same query -- the point is to SEE each stage's effect, not just claim it.
 
 Requires: chunking done, Qdrant already indexed (scripts/run_embedding.py has
-been run), GEMINI_API_KEY set in .env.
+been run), GEMINI_API_KEY set in .env. First run downloads the ~80MB
+cross-encoder model.
 """
 
 from __future__ import annotations
@@ -25,6 +26,8 @@ from docuagent.config import DOCUMENTS  # noqa: E402
 from docuagent.embedding.embedder import Embedder  # noqa: E402
 from docuagent.retrieval.bm25_index import BM25Index  # noqa: E402
 from docuagent.retrieval.hybrid import HybridSearcher  # noqa: E402
+from docuagent.retrieval.pipeline import RetrievalPipeline  # noqa: E402
+from docuagent.retrieval.reranker import Reranker  # noqa: E402
 from docuagent.vectorstore.qdrant_store import QdrantStore  # noqa: E402
 
 
@@ -55,6 +58,8 @@ def run_search(query: str, limit: int) -> None:
     store = QdrantStore()
     bm25 = BM25Index(chunks)
     hybrid = HybridSearcher(chunks, embedder, store)
+    reranker = Reranker()
+    pipeline = RetrievalPipeline(chunks, embedder, store, reranker=reranker)
 
     print(f'Query: "{query}"\n')
 
@@ -83,6 +88,12 @@ def run_search(query: str, limit: int) -> None:
             )
             for h in hybrid_hits
         ],
+    )
+
+    reranked_hits = pipeline.search(query, limit=limit)
+    print_block(
+        "HYBRID + RERANKED (cross-encoder)",
+        [(f"rerank={h['rerank_score']:.4f}", h) for h in reranked_hits],
     )
 
 
