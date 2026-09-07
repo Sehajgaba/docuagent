@@ -37,7 +37,7 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 8 | Vector DB + HNSW (ANN) | D3 | 🟡 | — | O(log n) vs brute force; cosine vs euclidean; Qdrant built + tested live |
 | 9 | BM25 keyword search | D4 | 🟡 | — | TF (saturating) + IDF (auto-downweights common words) + length norm; no stopword list needed |
 | 10 | Hybrid search + RRF fusion | D4 | 🟡 | — | why rank not raw score (BM25 unbounded vs cosine 0..1); k=60 softens rank-1-vs-2 swing |
-| 11 | Reranking / cross-encoder | D5 | 🔴 | — | bi- vs cross-encoder |
+| 11 | Reranking / cross-encoder | D5 | 🟡 | — | bi-encoder=fast/precomputed, cross-encoder=accurate/must-rerun-per-query; domain shift is real, bigger model ≠ fixes it |
 | 12 | RAG generation + grounding | D6 | 🔴 | — | anti-hallucination |
 | 13 | Prompt engineering | D6 | 🔴 | — | |
 | 14 | Structured numeric querying | D7 | 🔴 | — | RAG vs SQL for numbers |
@@ -49,7 +49,7 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 20 | FastAPI serving | D11 | 🔴 | — | |
 | 21 | Docker + deployment | D12 | 🔴 | — | |
 
-**Score:** 10/21 seen · 1/21 explain-cold · 0/21 deep
+**Score:** 11/21 seen · 1/21 explain-cold · 0/21 deep
 
 ---
 
@@ -100,6 +100,15 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 **Known residual noise:** hybrid top-5 still let a table-of-contents chunk in at #4 (it scored well on BOTH BM25 — keyword-dense TOC — and sat somewhere in vector's wider candidate pool). Expected — that's precision cleanup, Day 5's cross-encoder reranker's job, not this layer's.
 **Quiz:** not yet run.
 **Weak / revisit:** Day 2 + Day 3 quizzes still outstanding, now 3 days deep in backlog.
+
+### Day 5 — 2026-09-04 · Layer 5: Reranking (cross-encoder) ✅
+**Built:** `retrieval/reranker.py` (`Reranker` wrapping `sentence-transformers` `CrossEncoder`, local, no key), `retrieval/pipeline.py` (`RetrievalPipeline` — composes Day 4's `HybridSearcher` for wide recall + `Reranker` for narrow precision judging), extended `run_hybrid_search.py` with a 4th comparison block (hybrid + reranked). Model: `cross-encoder/ms-marco-MiniLM-L-6-v2`, matches CLAUDE.md's stack choice. Not committed yet.
+**Learned:** cross-encoder reads (query, passage) TOGETHER in one transformer pass — sees word-level interaction a bi-encoder's two-independent-vectors-then-cosine comparison structurally cannot. Cost: can't precompute (score only exists once paired with a specific query), so it only ever runs on the shortlist the cheap stages (HNSW + BM25) already narrowed down — standard two-stage architecture: recall wide + cheap, then judge narrow + expensive.
+**Real finding, partial win:** reran Day 4's exact junk case ("how has the company's phone and internet business grown"). Cross-encoder correctly buried the table-of-contents chunk (rank 4 in hybrid → rank 11 after rerank) — the fix worked as designed. BUT it also demoted a highly specific, correct Jio chunk (`mda_010`, "connected ~18 million homes... 85% of new industry additions" — arguably the single best answer in the corpus) from top-2 down to rank 7, while promoting an unrelated Reliance Retail revenue chunk to rank 3. Read the actual chunk text to confirm this wasn't a fluke — genuine misjudgment.
+**Real finding, ruled out a fix:** hypothesis was "model too small, try `ms-marco-MiniLM-L-12-v2`." Tested head-to-head on the same query. L-12 did NOT fix it — still missed `mda_010` (rank 8), still promoted the Retail chunk (rank 3), and additionally ranked the least-relevant chunk in the whole set (generic "Dear Shareholders..." letter-opener, zero specific content) as #1. Also confirmed ~1.8x slower on pure inference time (1.48s → 2.63s for 15 candidates, isolated from network/DB calls) — matches the "roughly 2x" tradeoff already documented in the code, empirically not just assumed.
+**Conclusion:** this is domain shift, not model capacity — `ms-marco-MiniLM` (both sizes) is trained on MS MARCO's short, general web-search queries; scaling the same architecture on the same training distribution doesn't fix a mismatch with financial-report-domain text. Kept L-6 (equally imperfect, much cheaper). Real fix would be fine-tuning or a different reranker corpus, out of scope for now. Logged as a known limitation to quantify properly in Day 9 (RAGAS), not eyeball on 1-2 queries.
+**Quiz:** not yet run.
+**Weak / revisit:** Day 2/3/4 quizzes still outstanding, now 4 days deep in backlog — should not let this grow further into Day 6.
 
 <!-- TEMPLATE for next entries:
 ### Day N — YYYY-MM-DD · Layer N: <name>

@@ -18,23 +18,26 @@ Agentic RAG over BSE annual reports. Learning + showcase project.
 - Embed: Gemini `gemini-embedding-2` (768d, Matryoshka-truncated from native 3072). `text-embedding-004` retired — do not reintroduce.
 - LLM: NVIDIA NIM `deepseek-ai/deepseek-v4-pro-0813` (OpenAI-compatible endpoint). Slow (~224s/reply observed) — needs a timeout/fallback plan before Day 6 wires it into RAG generation.
 - Vector DB: Qdrant (local Docker dev / Cloud free live)
-- Rerank: local cross-encoder `ms-marco-MiniLM` (no key)
+- Keyword: BM25 (`rank-bm25`, in-memory, rebuilt from data/chunks/*.json each run — no server needed at this scale)
+- Fusion: Reciprocal Rank Fusion (RRF), k=60 — combines vector + BM25 by rank, not raw score (different scales, can't sum directly)
+- Rerank: local cross-encoder `cross-encoder/ms-marco-MiniLM-L-6-v2` (no key). Known limitation: MS-MARCO-trained, domain shift on financial-report text — tested L-12 (bigger) as a fix, made it WORSE + ~1.8x slower, do not swap. Real fix would be fine-tuning; measure properly in Day 9 RAGAS, don't hand-tune off single queries.
 - Deploy: Render
 - Py 3.13, Windows/PowerShell. Secrets in `.env` (gitignored). PDFs gitignored.
 - NVIDIA NIM keys are entitlement-gated per model — a valid key can still 404 on a model not individually enabled for the account. Don't assume `/v1/models` listing a model means it's usable.
 
 ## Layout
-`src/docuagent/` — `config.py` (settings+DOCUMENTS registry), `ingestion/pdf_parser.py`, `chunking/chunker.py`, `embedding/embedder.py`, `vectorstore/qdrant_store.py`
-`scripts/` — `run_ingestion.py`, `run_chunking.py`, `run_embedding.py`
+`src/docuagent/` — `config.py` (settings+DOCUMENTS registry), `ingestion/pdf_parser.py`, `chunking/chunker.py` (incl. `load_chunks`), `embedding/embedder.py`, `vectorstore/qdrant_store.py`, `retrieval/` (`bm25_index.py`, `hybrid.py`, `reranker.py`, `pipeline.py` = full retrieval pipeline)
+`scripts/` — `run_ingestion.py`, `run_chunking.py`, `run_embedding.py`, `run_hybrid_search.py`
 `data/{raw_pdfs,parsed_json,chunks,qdrant_storage}/` (gitignored)
 
 ## Commands
 - Ingest: `python scripts/run_ingestion.py --max 8` (dev) / no flag (full)
 - Chunk: `python scripts/run_chunking.py`
 - Embed + index: `python scripts/run_embedding.py --recreate`
-- Search test: `python scripts/run_embedding.py --search "question here"`
+- Search test (vector only): `python scripts/run_embedding.py --search "question here"`
+- Full retrieval test (vector/BM25/hybrid/reranked side by side): `python scripts/run_hybrid_search.py --search "question here"`
 - Qdrant: `docker run -d --name qdrant -p 6333:6333 -p 6334:6334 -v ./data/qdrant_storage:/qdrant/storage qdrant/qdrant` · dashboard at localhost:6333/dashboard
 - Windows: scripts force UTF-8 stdout (cp1252 crashes on `₹`)
 
 ## Build progress
-See PROGRESS.md. Day 1 (ingestion), Day 2 (chunking), Day 3 (embed+Qdrant) done — Day 2/3 quizzes still owed. Plan: 4 hybrid·5 rerank·6 RAG·7 numeric·8 agent·9 RAGAS·10 langsmith·11 API+UI·12 deploy.
+See PROGRESS.md. Day 1 (ingestion), Day 2 (chunking), Day 3 (embed+Qdrant), Day 4 (hybrid+RRF), Day 5 (rerank) done — Day 2/3/4/5 quizzes still owed, 4 deep in backlog. Plan: 6 RAG·7 numeric·8 agent·9 RAGAS·10 langsmith·11 API+UI·12 deploy.
