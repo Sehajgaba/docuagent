@@ -38,8 +38,8 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 9 | BM25 keyword search | D4 | 🟡 | — | TF (saturating) + IDF (auto-downweights common words) + length norm; no stopword list needed |
 | 10 | Hybrid search + RRF fusion | D4 | 🟡 | — | why rank not raw score (BM25 unbounded vs cosine 0..1); k=60 softens rank-1-vs-2 swing |
 | 11 | Reranking / cross-encoder | D5 | 🟡 | — | bi-encoder=fast/precomputed, cross-encoder=accurate/must-rerun-per-query; domain shift is real, bigger model ≠ fixes it |
-| 12 | RAG generation + grounding | D6 | 🔴 | — | anti-hallucination |
-| 13 | Prompt engineering | D6 | 🔴 | — | |
+| 12 | RAG generation + grounding | D6 | 🟡 | — | grounding = answer from retrieved text not model memory; citations make hallucination checkable |
+| 13 | Prompt engineering | D6 | 🟡 | — | system prompt = grounding rules + citation format + "say I don't know" instruction |
 | 14 | Structured numeric querying | D7 | 🔴 | — | RAG vs SQL for numbers |
 | 15 | Agents: LLM+tools+loop+memory | D8 | 🔴 | — | |
 | 16 | ReAct loop | D8 | 🔴 | — | reason→act→observe |
@@ -49,7 +49,7 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 | 20 | FastAPI serving | D11 | 🔴 | — | |
 | 21 | Docker + deployment | D12 | 🔴 | — | |
 
-**Score:** 11/21 seen · 1/21 explain-cold · 0/21 deep
+**Score:** 13/21 seen · 1/21 explain-cold · 0/21 deep
 
 ---
 
@@ -109,6 +109,15 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 **Conclusion:** this is domain shift, not model capacity — `ms-marco-MiniLM` (both sizes) is trained on MS MARCO's short, general web-search queries; scaling the same architecture on the same training distribution doesn't fix a mismatch with financial-report-domain text. Kept L-6 (equally imperfect, much cheaper). Real fix would be fine-tuning or a different reranker corpus, out of scope for now. Logged as a known limitation to quantify properly in Day 9 (RAGAS), not eyeball on 1-2 queries.
 **Quiz:** not yet run.
 **Weak / revisit:** Day 2/3/4 quizzes still outstanding, now 4 days deep in backlog — should not let this grow further into Day 6.
+
+### Day 6 — 2026-09-07 · Layer 6: RAG generation ✅
+**Built:** `generation/prompts.py` (grounding system prompt + citation-format rule + explicit "say I don't know" instruction — anti-hallucination by construction, not just hope), `generation/llm.py` (`LLMClient` — primary NVIDIA DeepSeek with a hard 30s client-side timeout, falls over to Gemini `gemini-3.5-flash-lite` on ANY failure: timeout, entitlement 404, rate limit, network drop), `generation/rag.py` (`RAGPipeline` wiring Days 3-5's `RetrievalPipeline` → prompt → `LLMClient` → cited answer), `scripts/run_rag.py` (end-to-end CLI). Not committed yet.
+**Learned:** grounding = the model answers from TEXT HANDED TO IT (retrieved chunks) instead of its own training memory — doesn't eliminate hallucination, narrows where it can happen. Citations turn "trust the model" into "check the source in 5 seconds" — this is exactly what Day 9's RAGAS "faithfulness" metric will measure automatically instead of me eyeballing it. Retries (used correctly for Day 3's embedder, a genuinely transient failure) are the WRONG tool for "this provider is consistently slow right now" — retrying a 224s-typical response just waits 224s twice; the right response to a slow *provider* is failing over to a *different* provider, not asking the same one again.
+**Real finding — the CLAUDE.md-flagged blocker, actually solved, not just planned:** DeepSeek hit the 30s timeout on the live end-to-end test; system failed over to `gemini-3.5-flash-lite` automatically (1.17s), answer correctly cited `[reliance_industries_2024_mda_010]`, and the cited number (Digital Services revenue growth 15.9% Y-o-Y) was verified byte-for-byte present in that chunk's actual text — not hallucinated.
+**Fallback model choice, verified not assumed:** `text-embedding-004`-style surprise repeated here — `gemini-2.0-flash` (CLAUDE.md's original pick) is also retired. Live-tested 3 current replacements on an identical short grounded-QA prompt: `gemini-3.5-flash-lite` (0.8s), `gemini-3.5-flash` (28.6s), `gemini-3.8-flash` (60.3s) — all three produced byte-identical wording. Picked flash-lite: zero measured quality cost, ~35x faster than the next option, for exactly the kind of short factual-lookup answer this project needs.
+**Infra hiccups fixed (environment, not code):** `sentence-transformers` had pulled in `torchcodec` (an audio/video dependency, irrelevant to text-only cross-encoder use) whose native DLL failed to load without FFmpeg — uninstalled it, sentence-transformers degrades gracefully without it. Docker Desktop had stopped since Day 5 (days passed between sessions) — restarted it + the Qdrant container; data survived because storage was bind-mounted to `data/qdrant_storage/`, not container-internal.
+**Quiz:** not yet run.
+**Weak / revisit:** Day 2/3/4/5 quizzes still outstanding by user's own explicit choice ("keep building, quiz later") — 5 days deep now, will need a real quiz session before this becomes unmanageable to review.
 
 <!-- TEMPLATE for next entries:
 ### Day N — YYYY-MM-DD · Layer N: <name>

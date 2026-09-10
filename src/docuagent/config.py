@@ -66,6 +66,17 @@ class Settings(BaseSettings):
     nvidia_api_key: str = ""
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
     llm_model: str = "deepseek-ai/deepseek-v4-pro-0813"
+    # Measured live at ~224s for a 6-token reply (shared NVIDIA infra, cold
+    # queue) -- unacceptable for an interactive answer. A hard client-side
+    # timeout plus a fallback model turns "sometimes hangs for minutes" into
+    # "always answers within a bounded time," at the cost of occasionally
+    # using the (measurably) lower-effort fallback instead of the primary.
+    llm_timeout_seconds: float = 30.0
+    # Fallback verified live: gemini-3.5-flash-lite answered the same question
+    # in 0.8s with byte-identical wording to gemini-3.5-flash (28.6s) and
+    # gemini-3.8-flash (60.3s) on a short grounded-QA prompt -- no measured
+    # quality loss for this task, so there's no reason to pick a slower one.
+    fallback_llm_model: str = "models/gemini-3.5-flash-lite"
 
     # --- Qdrant --------------------------------------------------------------
     qdrant_url: str = "http://localhost:6333"
