@@ -27,7 +27,7 @@ Agentic RAG over BSE annual reports. Learning + showcase project.
 
 ## Layout
 `src/docuagent/` — `config.py` (settings+DOCUMENTS registry), `ingestion/pdf_parser.py`, `chunking/chunker.py` (incl. `load_chunks`), `embedding/embedder.py`, `vectorstore/qdrant_store.py`, `retrieval/` (`bm25_index.py`, `hybrid.py`, `reranker.py`, `pipeline.py` = full retrieval pipeline), `generation/` (`prompts.py`, `llm.py` = primary+fallback client, `rag.py` = full RAG pipeline)
-`scripts/` — `run_ingestion.py`, `run_chunking.py`, `run_embedding.py`, `run_hybrid_search.py`, `run_rag.py`
+`scripts/` — `run_ingestion.py`, `run_chunking.py`, `run_embedding.py`, `run_hybrid_search.py`, `run_rag.py`, handbook builder (`handbook_blocks.py` = block types, `handbook_content.py` = all prose/data, `build_handbook.py` = docx renderer)
 `data/{raw_pdfs,parsed_json,chunks,qdrant_storage}/` (gitignored)
 
 ## Commands
@@ -38,6 +38,7 @@ Agentic RAG over BSE annual reports. Learning + showcase project.
 - Full retrieval test (vector/BM25/hybrid/reranked side by side): `python scripts/run_hybrid_search.py --search "question here"`
 - Full RAG (retrieve + grounded answer + citations): `python scripts/run_rag.py --ask "question here"`
 - Qdrant: `docker run -d --name qdrant -p 6333:6333 -p 6334:6334 -v ./data/qdrant_storage:/qdrant/storage qdrant/qdrant` · dashboard at localhost:6333/dashboard. If Docker Desktop itself isn't running, launch it first and wait for the daemon before `docker start qdrant`.
+- Build the concept handbook (Word, all 21 concepts + self-quiz): `python scripts/build_handbook.py` → `docs/docuagent-handbook.docx` (gitignored, regenerable; edit `scripts/handbook_content.py` to change content, never the .docx). Update it as Days 7-12 land: flip each concept's `status` to `BUILT` and add a `Callout("war", ...)` for what the build actually found.
 - Windows: scripts force UTF-8 stdout (cp1252 crashes on `₹`)
 - If `sentence-transformers` import fails on a `torchcodec`/FFmpeg DLL error: `pip uninstall torchcodec` — it's an unrelated audio/video dependency, unused by the text-only cross-encoder here, and sentence-transformers degrades gracefully without it.
 

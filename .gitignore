@@ -19,6 +19,11 @@ data/raw_pdfs/*.pdf
 data/parsed_json/*.json
 data/chunks/*.json
 
+# ---- Generated documents ----
+# Rebuild with: python scripts/build_handbook.py
+# The content source (scripts/handbook_*.py) is committed; the binary is not.
+docs/*.docx
+
 # ---- Vector DB local storage ----
 qdrant_storage/
 

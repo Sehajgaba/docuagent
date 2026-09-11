@@ -119,6 +119,12 @@ Rule: a concept only goes 🟢 after passing its quiz. ⭐ after a tradeoff ques
 **Quiz:** not yet run.
 **Weak / revisit:** Day 2/3/4/5 quizzes still outstanding by user's own explicit choice ("keep building, quiz later") — 5 days deep now, will need a real quiz session before this becomes unmanageable to review.
 
+### 2026-09-11 · Concept handbook (not a build layer)
+**Built:** `scripts/handbook_blocks.py` (block types), `scripts/handbook_content.py` (all prose/data), `scripts/build_handbook.py` (docx renderer) → `docs/docuagent-handbook.docx`. 25 pages, ~8,400 words, 10 tables, all 21 concepts. Gitignored as a generated artifact (sources committed) per the repo's existing convention. Not committed yet.
+**Contents:** Part 0 the 60-second "walk me through your project" answer + stage table · Part 1 the 13 built concepts in pipeline order · Part 2 the 8 remaining, each ending with the open problem THIS build already surfaced that it addresses (e.g. #14 numeric querying ↔ digit-density filter put the numbers in table chunks; #18 RAGAS ↔ quantifying the Day-5 reranker finding; #20 serving ↔ the 30s timeout/fallback) · Appendix A war-story bank · B stack decisions table · C measured-numbers cheat-sheet · D glossary · E self-quiz.
+**Note:** Appendix E is the deferred Day 2-6 quiz in written form — questions only, no answers. Concepts stay 🟡 until answered cold.
+**Verified:** python-docx round-trip (21/21 concept headings present, 0 empty headings) + opened in Word via COM — no repair prompt, TOC field resolves 51 entries. Layout itself not visually inspected; that needs a human opening it.
+
 <!-- TEMPLATE for next entries:
 ### Day N — YYYY-MM-DD · Layer N: <name>
 **Built:**
